@@ -1,23 +1,30 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from 'react';
+import WelcomeScreen from './components/WelcomeScreen';
+import UserInfoForm from './components/UserInfoForm';
+import PreferencesForm from './components/PreferencesForm';
+import ConfirmationScreen from './components/ConfirmationScreen';
+
 
 function App() {
+  const [step, setStep] = useState(0);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    preferences: '',
+  });
+
+  const nextStep = () => setStep((prev) => prev + 1);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+      {step === 0 && <WelcomeScreen onNext={nextStep} />}
+      {step === 1 && (
+        <UserInfoForm onNext={nextStep} data={formData} setData={setFormData} />
+      )}
+      {step === 2 && (
+        <PreferencesForm onNext={nextStep} data={formData} setData={setFormData} />
+      )}
+      {step === 3 && <ConfirmationScreen data={formData} />}
     </div>
   );
 }
