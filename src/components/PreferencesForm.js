@@ -1,63 +1,138 @@
 import React, { useState } from 'react';
 
-export default function PreferencesForm({ onNext, data, setData }) {
-  const [preferences, setPreferences] = useState({
-    jira: data.preferences?.jira || '',
-    confluence: data.preferences?.confluence || '',
-    figma: data.preferences?.figma || '',
-  });
+// Simulated "LLM" call — replace with your real API
+async function fetchLLMResponse(preferences) {
+  await new Promise((res) => setTimeout(res, 1500));
 
-  const handleChange = (field) => (e) => {
-    setPreferences((prev) => ({ ...prev, [field]: e.target.value }));
+  const lowerInput = preferences.toLowerCase();
+
+  if (
+    lowerInput.includes('place an order') &&
+    (lowerInput.includes('e-commerce') || lowerInput.includes('ecommerce'))
+  ) {
+    return [
+      'Go to the required e-commerce website and sign-in using your credentials.',
+      'Add the required product to the cart.',
+      'Open the cart.',
+      'Select the payment method through which you want to pay from.',
+      'Make payment by providing the required payment details. (Example: card details, UPI details, etc)',
+      'Validate your order on Order history page and emails.'
+    ];
+  }
+
+  // Default help suggestion (split into lines for easier rendering)
+  return [
+    `✅ You asked: "${preferences}"`,
+    '',
+    'Here’s how I can help you more:',
+    '- For Figma: Review components and design systems.',
+    '- For Atlas: View and update project plans.',
+    '- For GitHub: Review code, manage pull requests and issues.',
+    '- For Test Case Repository: Retrieve, edit, and manage test cases.',
+  ];
+}
+
+export default function PreferencesForm({
+  onNext = () => {},
+  data = {},
+  setData = () => {},
+}) {
+  const initialPreferences = String(data?.preferences ?? '');
+  const [preferences, setPreferences] = useState(initialPreferences);
+  const [response, setResponse] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const safePreferences = String(preferences ?? '');
+
+    setData((prev) => ({
+      ...prev,
+      preferences: safePreferences,
+    }));
+
+    setLoading(true);
+    setResponse('');
+
+    try {
+      const answer = await fetchLLMResponse(safePreferences);
+      setResponse(answer);
+    } catch (err) {
+      console.error('Error:', err);
+      setResponse(['❗ Sorry, there was an error fetching the response.']);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setData((prev) => ({ ...prev, preferences }));
-    console.log('Preferences submitted:', preferences);
-    onNext();
+  const renderResponse = () => {
+    if (!response) return null;
+
+    if (Array.isArray(response)) {
+      const hasBullets = response.some(line => line.trim().startsWith('-'));
+      const questionLine = response.find(line => line.startsWith('✅ You asked:'));
+      const otherLines = response.filter(line => line && !line.startsWith('✅ You asked:'));
+
+      if (response.every(line => !line.startsWith('-'))) {
+        // Render e-commerce steps as ordered list
+        return (
+          <ol style={styles.list}>
+            {response.map((item, index) => (
+              <li key={index} style={styles.listItem}>{item}</li>
+            ))}
+          </ol>
+        );
+      }
+
+      // Render default help suggestion with header and bullets
+      return (
+        <div>
+          {questionLine && <p style={styles.questionLine}>{questionLine}</p>}
+          <p style={styles.helpHeader}>Here’s how I can help you more:</p>
+          <ul style={styles.bulletList}>
+            {otherLines
+              .filter(line => line.trim().startsWith('-'))
+              .map((line, index) => (
+                <li key={index} style={styles.bulletItem}>
+                  {line.replace(/^-\s*/, '')}
+                </li>
+              ))}
+          </ul>
+        </div>
+      );
+    }
+
+    return <pre style={styles.responseText}>{response}</pre>;
   };
 
   return (
     <div style={styles.page}>
       <form onSubmit={handleSubmit} style={styles.card}>
-        <h2 style={styles.header}>Select Your Preferences</h2>
+        <h2 style={styles.header}>How can I help you?</h2>
 
         <label style={styles.label}>
-          JIRA
           <input
             type="text"
-            placeholder="Search in JIRA"
-            value={preferences.jira}
-            onChange={handleChange('jira')}
+            placeholder="Preferences"
+            value={preferences}
+            onChange={(e) => setPreferences(String(e.target.value ?? ''))}
+            required
             style={styles.input}
           />
         </label>
 
-        <label style={styles.label}>
-          CONFLUENCE
-          <input
-            type="text"
-            placeholder="Search in Confluence"
-            value={preferences.confluence}
-            onChange={handleChange('confluence')}
-            style={styles.input}
-          />
-        </label>
-
-        <label style={styles.label}>
-          FIGMA
-          <input
-            type="text"
-            placeholder="Search in Figma"
-            value={preferences.figma}
-            onChange={handleChange('figma')}
-            style={styles.input}
-          />
-        </label>
-
-        <button type="submit" style={styles.button}>Next ➜</button>
+        <button type="submit" style={styles.button} disabled={loading}>
+          {loading ? 'Searching...' : 'Submit'}
+        </button>
       </form>
+
+      {response && (
+        <div style={styles.responseBox}>
+          <h3 style={styles.responseHeader}>Assistant Response:</h3>
+          {renderResponse()}
+        </div>
+      )}
     </div>
   );
 }
@@ -65,7 +140,7 @@ export default function PreferencesForm({ onNext, data, setData }) {
 const styles = {
   page: {
     display: 'flex',
-    justifyContent: 'center',
+    flexDirection: 'column',
     alignItems: 'center',
     minHeight: '100vh',
     backgroundColor: '#f5f7fa',
@@ -111,5 +186,53 @@ const styles = {
     cursor: 'pointer',
     fontSize: '1rem',
     transition: 'background-color 0.2s',
+  },
+  responseBox: {
+    marginTop: '2rem',
+    backgroundColor: '#fff',
+    maxWidth: '600px',
+    width: '100%',
+    borderRadius: '12px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+    padding: '1.5rem',
+  },
+  responseHeader: {
+    marginBottom: '1rem',
+    color: '#4a90e2',
+    fontSize: '1.4rem',
+  },
+  questionLine: {
+    fontWeight: 'bold',
+    marginBottom: '0.5rem',
+    color: '#333',
+  },
+  helpHeader: {
+    marginTop: '1rem',
+    marginBottom: '0.5rem',
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  responseText: {
+    whiteSpace: 'pre-wrap',
+    fontFamily: 'monospace',
+    color: '#333',
+  },
+  list: {
+    paddingLeft: '1.5rem',
+    color: '#333',
+    fontSize: '1rem',
+    lineHeight: '1.5',
+  },
+  listItem: {
+    marginBottom: '0.75rem',
+  },
+  bulletList: {
+    paddingLeft: '1.5rem',
+    color: '#333',
+    fontSize: '1rem',
+    lineHeight: '1.5',
+  },
+  bulletItem: {
+    marginBottom: '0.5rem',
   },
 };
