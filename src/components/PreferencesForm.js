@@ -70,7 +70,7 @@ export default function PreferencesForm({
     if (!response) return null;
 
     if (Array.isArray(response)) {
-      const hasBullets = response.some(line => line.trim().startsWith('-'));
+      // const hasBullets = response.some(line => line.trim().startsWith('-'));
       const questionLine = response.find(line => line.startsWith('✅ You asked:'));
       const otherLines = response.filter(line => line && !line.startsWith('✅ You asked:'));
 
